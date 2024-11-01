@@ -79,9 +79,9 @@ void goToSleep() {
   gpio_pullup_dis(GPIO_NUM_2);
   gpio_hold_en(GPIO_NUM_2);
 
-//  gpio_pulldown_dis(GPIO_NUM_4);
-//  gpio_pullup_dis(GPIO_NUM_4);
-//  gpio_hold_en(GPIO_NUM_4);
+  //  gpio_pulldown_dis(GPIO_NUM_4);
+  //  gpio_pullup_dis(GPIO_NUM_4);
+  //  gpio_hold_en(GPIO_NUM_4);
 
   gpio_pulldown_dis(GPIO_NUM_0);
   gpio_pullup_dis(GPIO_NUM_0);
@@ -118,7 +118,7 @@ void checkNFC() {
       ledcWriteNote(BUZ_PIN, (note_t) i, 8);
       delay(300);
     }
-    
+
 
     pinMode(LED_PIN, INPUT);
     digitalWrite(LED_EN, LOW);
@@ -150,8 +150,8 @@ void writeNFC() {
 
   delay(100);
 
-  
-//  ecdsa_test();
+
+  //  ecdsa_test();
 
 }
 
@@ -190,7 +190,7 @@ void setup() {
   pinMode(GPO_PIN, INPUT);
   pinMode(VEXT_PIN, INPUT);
 
-  preferences.begin("crypto2", false);
+  preferences.begin("frog", false);
 
   analogReadResolution(8);  // Set ADC resolution to 12 bits
   //  analogSetCycles(255);
@@ -207,6 +207,18 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(VEXT_PIN), goToSleep, FALLING);
 
     configureNFC();
+
+    String pkY = preferences.getString("publicKey.y", "");
+    if (pkY.isEmpty()) {
+      ecdsa_test();
+      ledcAttach(BUZ_PIN, 4100, 8);
+      ledcWriteNote(BUZ_PIN, NOTE_C, 8);
+      for (int i = 0; i < 6; i++) {
+        neopixelWrite2(LED_PIN, i, 0, 0, RGB_BRIGHTNESS, 8);
+        delay(50); 
+      }
+      ledcDetach(BUZ_PIN);
+    }
 
   } else {
     runChecks();
@@ -273,14 +285,14 @@ void checkButton() {
       ledcWriteNote(BUZ_PIN, NOTE_C, 8);
       for (int i = 0; i < 6; i++) {
         neopixelWrite2(LED_PIN, i, 0, 0, RGB_BRIGHTNESS, 8);
-        delay(50);
+        delay(50); 
       }
     } else if (sum > 25000 && sum < 35000) {
       ledcWriteNote(BUZ_PIN, NOTE_D, 8);
-//      for (int i = 0; i < 6; i++) {
-//        neopixelWrite2(LED_PIN, i, 0, RGB_BRIGHTNESS, 0, 8);
-//        delay(50);
-//      }
+      //      for (int i = 0; i < 6; i++) {
+      //        neopixelWrite2(LED_PIN, i, 0, RGB_BRIGHTNESS, 0, 8);
+      //        delay(50);
+      //      }
 
       ecdsa_test();
     } else if (sum > 35000 && sum < 50000) {
@@ -289,7 +301,7 @@ void checkButton() {
         neopixelWrite2(LED_PIN, i, RGB_BRIGHTNESS, 0, 0, 8);
         delay(50);
       }
-    }else{
+    } else {
       ledcWriteNote(BUZ_PIN, NOTE_E, 8);
       for (int i = 0; i < 6; i++) {
         neopixelWrite2(LED_PIN, i, RGB_BRIGHTNESS, 0, RGB_BRIGHTNESS, 8);
@@ -365,10 +377,10 @@ void ecdsa_test() {
   Serial.println("Building tree...");
   int ledstep = 0;
 
-  
-      
 
-      
+
+
+
   int count = doc.size() * 2;
   mbedtls_mpi *items = (mbedtls_mpi*)malloc(sizeof(mbedtls_mpi) * count);
   int index = 0;
@@ -383,7 +395,7 @@ void ecdsa_test() {
 
     if (strcmp(value["type"], "int") == 0) {
       neopixelWrite2(LED_PIN, (ledstep++) % 6, RGB_BRIGHTNESS, RGB_BRIGHTNESS, 0, 6);
-      
+
       mbedtls_mpi input;
       mbedtls_mpi_init(&input);
       mbedtls_mpi_lset(&input, value["value"].as<int>());
@@ -395,9 +407,9 @@ void ecdsa_test() {
     }
     index += 2;
   }
-  
 
-  
+
+
   Serial.print("Computing Merkle Tree... ");
   while (count > 1) {
     for (int i = 0; i < count; i += 2) {
@@ -435,7 +447,7 @@ void ecdsa_test() {
 
   char x_str[200], y_str[200];
   neopixelWrite2(LED_PIN, (ledstep++) % 6, RGB_BRIGHTNESS, RGB_BRIGHTNESS, 0, 6);
-  
+
   uint8_t sBuff[64];
   blake512_hash(sBuff, privateKey, 32);
 
@@ -549,7 +561,7 @@ void ecdsa_test() {
   inputs[4] = message;
 
   neopixelWrite2(LED_PIN, (ledstep++) % 6, RGB_BRIGHTNESS, RGB_BRIGHTNESS, 0, 6);
-  
+
   mbedtls_mpi hms;
   mbedtls_mpi_init(&hms);
   Serial.print("Computing Poseidon5 Hash... ");
@@ -613,7 +625,7 @@ void ecdsa_test() {
 
   String jsonPCDString;
   serializeJson(pcd, jsonPCDString);
-  
+
 
   StaticJsonDocument<1024> addLink;
 
@@ -681,7 +693,7 @@ void ecdsa_test() {
 
   // Cleanup
   mbedtls_mpi_free(&A.X); mbedtls_mpi_free(&A.Y); mbedtls_mpi_free(&A.Z);
-  mbedtls_mpi_free(&R8.X); mbedtls_mpi_free(&R8.Y);mbedtls_mpi_free(&R8.Z);
+  mbedtls_mpi_free(&R8.X); mbedtls_mpi_free(&R8.Y); mbedtls_mpi_free(&R8.Z);
 
   mbedtls_mpi_free(&hms);
   mbedtls_mpi_free(&ss);
