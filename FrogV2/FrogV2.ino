@@ -145,14 +145,6 @@ void checkNFC() {
 
 void writeNFC() {
   Serial.println("Configuring GPO");
-  tag.setGPO1Bit(BIT_GPO1_FIELD_CHANGE_EN,   false);
-  tag.setGPO1Bit(BIT_GPO1_RF_USER_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_RF_ACTIVITY_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_RF_INTERRUPT_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_RF_PUT_MSG_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_RF_GET_MSG_EN, true);
-  tag.setGPO1Bit(BIT_GPO1_RF_WRITE_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_GPO_EN, true);
   tag.writeCCFile4Byte();
 
   int number = preferences.getInt("number");
@@ -163,7 +155,7 @@ void writeNFC() {
   delay(100);
 
   
-  ecdsa_test();
+//  ecdsa_test();
 
 }
 
@@ -289,10 +281,10 @@ void checkButton() {
       }
     } else if (sum > 25000 && sum < 35000) {
       ledcWriteNote(BUZ_PIN, NOTE_D, 8);
-      for (int i = 0; i < 6; i++) {
-        neopixelWrite2(LED_PIN, i, 0, RGB_BRIGHTNESS, 0, 8);
-        delay(50);
-      }
+//      for (int i = 0; i < 6; i++) {
+//        neopixelWrite2(LED_PIN, i, 0, RGB_BRIGHTNESS, 0, 8);
+//        delay(50);
+//      }
 
       ecdsa_test();
     } else if (sum > 35000 && sum < 50000) {
@@ -677,29 +669,10 @@ void ecdsa_test() {
   if (!tag.begin(Wire)) {
     Serial.println("ST25 not detected.");
 
-    pinMode(LED_PIN, OUTPUT);
-    digitalWrite(LED_EN, HIGH);
-    delay(10);
-    for (int i = 0; i < 6; i++) {
-      neopixelWrite2(LED_PIN, i, RGB_BRIGHTNESS, 0, 0, 6);
-      
-      delay(50);
-    }
-    pinMode(LED_PIN, INPUT);
-    digitalWrite(LED_EN, LOW);
-
   } else {
     Serial.println("ST25  detected. ");
   }
 
-  tag.setGPO1Bit(BIT_GPO1_FIELD_CHANGE_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_RF_USER_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_RF_ACTIVITY_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_RF_INTERRUPT_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_RF_PUT_MSG_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_RF_GET_MSG_EN, true);
-  tag.setGPO1Bit(BIT_GPO1_RF_WRITE_EN, false);
-  tag.setGPO1Bit(BIT_GPO1_GPO_EN, true);
 
   tag.writeCCFile4Byte();
   tag.writeNDEFURI(mini.c_str(), SFE_ST25DV_NDEF_URI_ID_CODE_HTTPS);
