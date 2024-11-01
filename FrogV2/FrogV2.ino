@@ -113,16 +113,12 @@ void checkNFC() {
     pinMode(LED_PIN, OUTPUT);
     digitalWrite(LED_EN, HIGH);
     delay(10);
-    for (int i = 0; i < 4; i++) {
-      neopixelWrite2(LED_PIN, 2 * i, RGB_BRIGHTNESS, 0, 0, 8);
+    for (int i = 0; i < 6; i++) {
+      neopixelWrite2(LED_PIN, i, RGB_BRIGHTNESS, 0, 0, 6);
       ledcWriteNote(BUZ_PIN, (note_t) i, 8);
-      delay(200);
+      delay(300);
     }
-    for (int i = 0; i < 4; i++) {
-      neopixelWrite2(LED_PIN, 2 * i + 1, RGB_BRIGHTNESS, 0, 0, 8);
-      ledcWriteNote(BUZ_PIN, (note_t) i, 8);
-      delay(200);
-    }
+    
 
     pinMode(LED_PIN, INPUT);
     digitalWrite(LED_EN, LOW);
