@@ -13,6 +13,9 @@
 #include "esp32-hal-gpio.h"
 #include <pod_util.h>
 #include <blake.h>
+#include "esp32-hal-cpu.h"
+
+
 //#include <driver/rtc_io.h>
 //#include <driver/gpio.h>
 
@@ -55,6 +58,8 @@ SFE_ST25DV64KC_NDEF tag;
 #define RGB_BRIGHTNESS 16
 
 RTC_DATA_ATTR int interval = 10; // interval in milliseconds
+
+//esp_pm_config_esp32c3_t pm_config;
 
 static volatile bool interruptChanged = false;
 
@@ -215,7 +220,7 @@ void setup() {
       ledcWriteNote(BUZ_PIN, NOTE_C, 8);
       for (int i = 0; i < 6; i++) {
         neopixelWrite2(LED_PIN, i, 0, 0, RGB_BRIGHTNESS, 8);
-        delay(50); 
+        delay(50);
       }
       ledcDetach(BUZ_PIN);
     }
@@ -251,20 +256,144 @@ void didReadNFC() {
   ledcDetach(BUZ_PIN);
 }
 
+
+void debounceWaitButton() {
+  int x = 0;
+  long startTime = millis();
+  bool shouldPlay = false;
+
+
+  while (x < 10) {
+    delay(1);
+    if (analogRead(SW_PIN) < 250) {
+      x = 0;
+    } else {
+      x++;
+    }
+    if (millis() - startTime > 1000 && !shouldPlay) {
+      shouldPlay = true;
+      neopixelWrite2(LED_PIN, 0, RGB_BRIGHTNESS, RGB_BRIGHTNESS, RGB_BRIGHTNESS, 6);
+    }
+  }
+
+  if (shouldPlay) {
+    playSong();
+  }
+}
+
+
+
+// Define note frequencies
+#define NOTE_C4 262
+#define NOTE_D4 294
+#define NOTE_E4 330
+#define NOTE_F4 349
+#define NOTE_G4 392
+#define NOTE_A4 440
+#define NOTE_B4 494
+#define NOTE_C5 523
+#define NOTE_D5 587
+#define NOTE_E5 659
+#define NOTE_F5 698
+#define NOTE_G5 784
+#define NOTE_A5 880
+#define NOTE_B5 988
+
+// Arrays to store the song
+const int notes[] = {
+  NOTE_E4, NOTE_G4, NOTE_A4, NOTE_A4, 0, NOTE_A4, NOTE_B4, NOTE_C5, NOTE_C5, 0,
+  NOTE_C5, NOTE_D5, NOTE_B4, NOTE_B4, 0, NOTE_A4, NOTE_G4, NOTE_A4, 0,
+  NOTE_E4, NOTE_G4, NOTE_A4, NOTE_A4, 0, NOTE_A4, NOTE_B4, NOTE_C5, NOTE_C5, 0,
+  NOTE_C5, NOTE_D5, NOTE_B4, NOTE_B4, 0, NOTE_A4, NOTE_G4, NOTE_A4, 0,
+  NOTE_E4, NOTE_G4, NOTE_A4, NOTE_A4, 0, NOTE_A4, NOTE_C5, NOTE_D5, NOTE_D5, 0,
+  NOTE_D5, NOTE_E5, NOTE_F5, NOTE_F5, 0, NOTE_E5, NOTE_D5, NOTE_E5, NOTE_A4, 0,
+  NOTE_A4, NOTE_B4, NOTE_C5, NOTE_C5, 0, NOTE_D5, NOTE_E5, NOTE_A4, 0,
+  NOTE_A4, NOTE_C5, NOTE_B4, NOTE_B4, 0, NOTE_C5, NOTE_A4, NOTE_B4, 0,
+  NOTE_A4, NOTE_A4,
+  // Repeat of first part
+  NOTE_A4, NOTE_B4, NOTE_C5, NOTE_C5, 0, NOTE_C5, NOTE_D5, NOTE_B4, NOTE_B4, 0,
+  NOTE_A4, NOTE_G4, NOTE_A4, 0, NOTE_E4, NOTE_G4, NOTE_A4, NOTE_A4, 0,
+  NOTE_A4, NOTE_B4, NOTE_C5, NOTE_C5, 0, NOTE_C5, NOTE_D5, NOTE_B4, NOTE_B4, 0,
+  NOTE_A4, NOTE_G4, NOTE_A4, 0, NOTE_E4, NOTE_G4, NOTE_A4, NOTE_A4, 0,
+  NOTE_A4, NOTE_C5, NOTE_D5, NOTE_D5, 0, NOTE_D5, NOTE_E5, NOTE_F5, NOTE_F5, 0,
+  NOTE_E5, NOTE_D5, NOTE_E5, NOTE_A4, 0, NOTE_A4, NOTE_B4, NOTE_C5, NOTE_C5, 0,
+  NOTE_D5, NOTE_E5, NOTE_A4, 0, NOTE_A4, NOTE_C5, NOTE_B4, NOTE_B4, 0,
+  NOTE_C5, NOTE_A4, NOTE_B4, 0,
+  // End of Repeat
+  NOTE_E5, 0, 0, NOTE_F5, 0, 0, NOTE_E5, NOTE_E5, 0, NOTE_G5, 0, NOTE_E5, NOTE_D5, 0, 0,
+  NOTE_D5, 0, 0, NOTE_C5, 0, 0, NOTE_B4, NOTE_C5, 0, NOTE_B4, 0, NOTE_A4,
+  NOTE_E5, 0, 0, NOTE_F5, 0, 0, NOTE_E5, NOTE_E5, 0, NOTE_G5, 0, NOTE_E5, NOTE_D5, 0, 0,
+  NOTE_D5, 0, 0, NOTE_C5, 0, 0, NOTE_B4, NOTE_C5, 0, NOTE_B4, 0, NOTE_A4
+};
+
+const int durations[] = {
+  125, 125, 250, 125, 125, 125, 125, 250, 125, 125,
+  125, 125, 250, 125, 125, 125, 125, 375, 125,
+  125, 125, 250, 125, 125, 125, 125, 250, 125, 125,
+  125, 125, 250, 125, 125, 125, 125, 375, 125,
+  125, 125, 250, 125, 125, 125, 125, 250, 125, 125,
+  125, 125, 250, 125, 125, 125, 125, 125, 250, 125,
+  125, 125, 250, 125, 125, 250, 125, 250, 125, 125,
+  125, 250, 125, 125, 125, 125, 375, 375, 250, 125,
+  // Repeat of First Part
+  125, 125, 250, 125, 125, 125, 125, 250, 125, 125,
+  125, 125, 375, 125, 125, 125, 250, 125, 125,
+  125, 125, 250, 125, 125, 125, 125, 250, 125, 125,
+  125, 125, 375, 125, 125, 125, 250, 125, 125,
+  125, 125, 250, 125, 125, 125, 125, 250, 125, 125,
+  125, 125, 125, 250, 125, 125, 125, 250, 125, 125,
+  250, 125, 250, 125, 125, 125, 250, 125, 125, 125,
+  125, 375, 375,
+  // End of Repeat
+  250, 125, 375, 250, 125, 375, 125, 125, 125, 125, 125, 125, 125, 125, 375,
+  250, 125, 375, 250, 125, 375, 125, 125, 125, 125, 125, 500,
+  250, 125, 375, 250, 125, 375, 125, 125, 125, 125, 125, 125, 125, 125, 375,
+  250, 125, 375, 250, 125, 375, 125, 125, 125, 125, 125, 500
+};
+
+
+
+void playNote(int frequency, int duration) {
+  ledcWriteTone(BUZ_PIN, frequency);
+  delay(duration);
+  //  ledcWriteTone(BUZ_PIN, 0);
+  //  delay(50);  // Short pause between notes
+}
+
+void playSong() {
+  int totalNotes = sizeof(notes) / sizeof(notes[0]);
+  for (int i = 0; i < totalNotes; i++) {
+    playNote(notes[i], durations[i]);
+    neopixelWrite2(LED_PIN, ((notes[i] - 250) / 50) % 6,
+                   i % 3 == 0 ? RGB_BRIGHTNESS : 0,
+                   i % 3 == 1 ? RGB_BRIGHTNESS : 0,
+                   i % 3 == 2 ? RGB_BRIGHTNESS : 0, 6);
+
+    int value = analogRead(SW_PIN);
+    if (value < 250) {
+      break;
+    }
+  }
+
+}
+
+
 void checkButton() {
   int value = analogRead(SW_PIN);
   if (value < 250) {
     //    analogRead(SW_PIN);
     //    analogRead(SW_PIN);
     //    analogRead(SW_PIN);
-    //    pinMode(SW_PIN, OUTPUT);
-    //    digitalWrite(SW_PIN, LOW);
-    //    pinMode(SW_PIN, INPUT);
+    pinMode(SW_PIN, OUTPUT);
+    digitalWrite(SW_PIN, HIGH);
+    delay(5);
+    pinMode(SW_PIN, INPUT);
 
-    delay(30);
+    delay(5);
     int sum = 0;
     for (int i = 0; i < 200; i++) {
       sum += analogRead(SW_PIN);
+      delayMicroseconds(10);
     }
 
     if (sum > 60000) return;
@@ -281,13 +410,21 @@ void checkButton() {
     ledcAttach(BUZ_PIN, 4100, 8);
 
 
-    if (sum > 17000 && sum < 25000) {
+    if (sum > 17000 && sum < 27000) {
       ledcWriteNote(BUZ_PIN, NOTE_C, 8);
       for (int i = 0; i < 6; i++) {
         neopixelWrite2(LED_PIN, i, 0, 0, RGB_BRIGHTNESS, 8);
-        delay(50); 
+        delay(50);
       }
-    } else if (sum > 25000 && sum < 35000) {
+      debounceWaitButton();
+
+
+
+      //      while(!digitalRead(SW_PIN)){
+      //        delay(10);
+      //      }
+
+    } else if (sum > 27000 && sum < 37000) {
       ledcWriteNote(BUZ_PIN, NOTE_D, 8);
       //      for (int i = 0; i < 6; i++) {
       //        neopixelWrite2(LED_PIN, i, 0, RGB_BRIGHTNESS, 0, 8);
@@ -295,18 +432,21 @@ void checkButton() {
       //      }
 
       ecdsa_test();
-    } else if (sum > 35000 && sum < 50000) {
+    } else if (sum > 37000 && sum < 50000) {
       ledcWriteNote(BUZ_PIN, NOTE_A, 8);
       for (int i = 0; i < 6; i++) {
         neopixelWrite2(LED_PIN, i, RGB_BRIGHTNESS, 0, 0, 8);
         delay(50);
       }
+      debounceWaitButton();
     } else {
       ledcWriteNote(BUZ_PIN, NOTE_E, 8);
       for (int i = 0; i < 6; i++) {
         neopixelWrite2(LED_PIN, i, RGB_BRIGHTNESS, 0, RGB_BRIGHTNESS, 8);
         delay(50);
       }
+      debounceWaitButton();
+
     }
 
 
@@ -337,14 +477,21 @@ void loop() {
     pinMode(LED_PIN, OUTPUT);
     digitalWrite(LED_EN, HIGH);
     blinkIndex++;
-    neopixelWrite2(LED_PIN, blinkIndex % 8, 0, 0, RGB_BRIGHTNESS, 8);
+    neopixelWrite2(LED_PIN, blinkIndex % 8, 0, RGB_BRIGHTNESS, 0, 8);
   }
 }
 
 
 
 void ecdsa_test() {
+  //  pm_config.max_freq_mhz = 160;
+  //  pm_config.min_freq_mhz = 160;
+  //  pm_config.light_sleep_enable = false;
+  //  esp_pm_configure(&pm_config);
+  //
 
+
+  setCpuFrequencyMhz(160);
   ensure_babyjub_constants();
 
   pinMode(LED_PIN, OUTPUT);
@@ -667,6 +814,13 @@ void ecdsa_test() {
   mini += String((char*) base64_signature);
 
   Serial.println(mini);
+  //
+  //  pm_config.max_freq_mhz = 40;
+  //  pm_config.min_freq_mhz = 40;
+  //  pm_config.light_sleep_enable = true;
+  //  esp_pm_configure(&pm_config);
+
+  setCpuFrequencyMhz(40);
 
 
   digitalWrite(VNFC_PIN, HIGH);
